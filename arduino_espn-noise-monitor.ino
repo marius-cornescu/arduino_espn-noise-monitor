@@ -13,10 +13,6 @@
 #define DEBUG_MEM
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-#define PUBLISH_TOPIC "home/solar-powered/unit-X/status"
-#define SUBSCRIBE_TOPIC "home/solar-powered/unit-X/command/+"
-//
 #define OFF 0x1
 #define ON 0x0
 
@@ -24,6 +20,8 @@
 
 //= INCLUDES =======================================================================================
 #include "Common.h"
+#include "fdrs_node_config.h"
+#include <fdrs_node.h>
 
 //= CONSTANTS ======================================================================================
 const byte LED_INDICATOR_PIN = LED_BUILTIN;  // choose the pin for the LED // D13
@@ -32,6 +30,9 @@ const byte LED_INDICATOR_PIN = LED_BUILTIN;  // choose the pin for the LED // D1
 unsigned long lastVoltageMeasurementMillis = 0;
 
 bool publishStateAtStartup = true;
+
+float data1;
+float data2;
 
 //##################################################################################################
 //==================================================================================================
@@ -52,15 +53,11 @@ void setup() {
   //
   bcm_Setup();
   //
-  wifi_Setup();
-  //
-  mqtt_Setup();
+  beginFDRS();
   //
   collectMeasurements();
   publishMeasurements();
   publishStateAtStartup = false;
-  //
-  wifi_LowPower_Sleep();
   //
   digitalWrite(LED_INDICATOR_PIN, OFF);
   //..............................
@@ -108,17 +105,11 @@ bool shouldPublishMeasurements() {
 void publishMeasurements() {
   debugPrintln(F("MAIN: Publish measurements"));
   //
-  wifi_LowPower_Wake();
-  //
-  mqtt_MaintainConnection();
-  //
   // TODO: read the data from storage
   //
-  if (mqtt_ShouldPublish() || publishStateAtStartup) {
+  if (/*mqtt_ShouldPublish() ||*/ publishStateAtStartup) {
     publishXXXDataToMqtt();
   }
-  //
-  wifi_LowPower_Sleep();
   //
 }
 //==================================================================================================
@@ -132,7 +123,7 @@ void publishXXXDataToMqtt() {
   //
   char statusReport[100];
   sprintf(statusReport, "{\"vcc\": %d, \"battery_vcc\": %d }", operating_voltage, battery_voltage);
-  mqtt_PublishString(PUBLISH_TOPIC, statusReport);
+  //mqtt_PublishString(PUBLISH_TOPIC, statusReport);
   //
 #ifdef DEBUG
   digitalWrite(LED_INDICATOR_PIN, OFF);
@@ -146,5 +137,30 @@ bool __ShouldMeasureVoltage() {
     lastVoltageMeasurementMillis = millis();
     return true;
   }
+}
+//==================================================================================================
+
+//OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
+void loop2() {
+  data1 = readHum();
+  loadFDRS(data1, HUMIDITY_T);
+  data2 = readTemp();
+  loadFDRS(data2, TEMP_T);
+  //  DBG(sendFDRS());
+  if (sendFDRS()) {
+    DBG("Big Success!");
+  } else {
+    DBG("Nope, not so much.");
+  }
+  sleepFDRS(30);  //Sleep time in seconds
+}
+//OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
+//==================================================================================================
+float readTemp() {
+  return 22.069;
+}
+//==================================================================================================
+float readHum() {
+  return random(0, 100);
 }
 //==================================================================================================
