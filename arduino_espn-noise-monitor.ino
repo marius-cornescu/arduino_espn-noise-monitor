@@ -8,7 +8,6 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #define DEBUG
 //#define DEBUG_V
-//#define DEBUG_MQTT
 //#define DEBUG_BCM
 #define DEBUG_MEM
 
@@ -28,11 +27,6 @@ const byte LED_INDICATOR_PIN = LED_BUILTIN;  // choose the pin for the LED // D1
 
 //= VARIABLES ======================================================================================
 unsigned long lastVoltageMeasurementMillis = 0;
-
-bool publishStateAtStartup = true;
-
-float data1;
-float data2;
 
 //##################################################################################################
 //==================================================================================================
@@ -57,7 +51,6 @@ void setup() {
   //
   collectMeasurements();
   publishMeasurements();
-  publishStateAtStartup = false;
   //
   digitalWrite(LED_INDICATOR_PIN, OFF);
   //..............................
@@ -66,11 +59,22 @@ void setup() {
 //**************************************************************************************************
 //OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
 void loop() {
+  //
+  bool was_published = false;
+  //
   if (shouldPublishMeasurements()) {
-    publishMeasurements();
+    was_published = publishMeasurements();
   }
-
   collectMeasurements();
+  //
+  if (was_published) {
+    debugPrintln("Succesfuly published measurements");
+    sleepFDRS(5 * 60);  // Sleep time in seconds
+  } else {
+    debugPrintln("FAILED to publish measurements");
+    sleepFDRS(30);  // Sleep time in seconds
+  }
+  //
 }
 //OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
 //==================================================================================================
@@ -81,7 +85,7 @@ void collectMeasurements() {
   //
   // TODO: measure something else and if needed, newMeasurement => if we save useful metric, add VCC info, too
   //
-  if (__ShouldMeasureVoltage() || publishStateAtStartup || newMeasurement) {
+  if (__ShouldMeasureVoltage() || newMeasurement) {
     debugPrintln(F("MAIN: Measure voltage"));
     //
     measurement->voltage_vcc = bcm_ReadOperatingVoltageMilliV();
@@ -99,21 +103,15 @@ void collectMeasurements() {
 bool shouldPublishMeasurements() {
   bool response = false;
   response = response || memory_ShouldFlush();
-  return response;
+  //return response;
+  return true;
 }
 //==================================================================================================
-void publishMeasurements() {
+bool publishMeasurements() {
   debugPrintln(F("MAIN: Publish measurements"));
   //
   // TODO: read the data from storage
   //
-  if (/*mqtt_ShouldPublish() ||*/ publishStateAtStartup) {
-    publishXXXDataToMqtt();
-  }
-  //
-}
-//==================================================================================================
-void publishXXXDataToMqtt() {
 #ifdef DEBUG
   digitalWrite(LED_INDICATOR_PIN, ON);
 #endif
@@ -121,13 +119,16 @@ void publishXXXDataToMqtt() {
   unsigned int operating_voltage = bcm_ReadOperatingVoltageMilliV();
   unsigned int battery_voltage = bcm_ReadBatteryVoltageMilliV();
   //
-  char statusReport[100];
-  sprintf(statusReport, "{\"vcc\": %d, \"battery_vcc\": %d }", operating_voltage, battery_voltage);
-  //mqtt_PublishString(PUBLISH_TOPIC, statusReport);
+  loadFDRS(operating_voltage, VOLTAGE_T);
+  loadFDRS(battery_voltage, VOLTAGE2_T);
+  //
+  bool was_published = sendFDRS();
   //
 #ifdef DEBUG
   digitalWrite(LED_INDICATOR_PIN, OFF);
 #endif
+  //
+  return was_published;
 }
 //==================================================================================================
 bool __ShouldMeasureVoltage() {
@@ -137,30 +138,5 @@ bool __ShouldMeasureVoltage() {
     lastVoltageMeasurementMillis = millis();
     return true;
   }
-}
-//==================================================================================================
-
-//OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
-void loop2() {
-  data1 = readHum();
-  loadFDRS(data1, HUMIDITY_T);
-  data2 = readTemp();
-  loadFDRS(data2, TEMP_T);
-  //  DBG(sendFDRS());
-  if (sendFDRS()) {
-    DBG("Big Success!");
-  } else {
-    DBG("Nope, not so much.");
-  }
-  sleepFDRS(30);  //Sleep time in seconds
-}
-//OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
-//==================================================================================================
-float readTemp() {
-  return 22.069;
-}
-//==================================================================================================
-float readHum() {
-  return random(0, 100);
 }
 //==================================================================================================
