@@ -6,10 +6,10 @@
 */
 //= DEFINES ========================================================================================
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#define DEBUG
+//#define DEBUG
 //#define DEBUG_V
 //#define DEBUG_BCM
-#define DEBUG_MEM
+//#define DEBUG_MEM
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #define OFF 0x1
@@ -26,13 +26,18 @@
 const byte LED_INDICATOR_PIN = LED_BUILTIN;  // choose the pin for the LED // D13
 
 //= VARIABLES ======================================================================================
+Measurement measurement = { 0, 0, 0, 0 };
+bool shouldPublishMeasurements = false;
+
 unsigned long lastVoltageMeasurementMillis = 0;
+
+unsigned long lastNoiseMeasurementDba = 0;
 
 //##################################################################################################
 //==================================================================================================
 //**************************************************************************************************
 void setup() {
-#if defined(DEBUG) || defined(DEBUG_V) || defined(DEBUG_MQTT) || defined(DEBUG_BCM) || defined(DEBUG_MEM)
+#if defined(DEBUG) || defined(DEBUG_V) || defined(DEBUG_BCM) || defined(DEBUG_MEM)
   // Open serial communications and wait for port to open:
   Serial.begin(115200);
   while (!Serial) { ; }
@@ -43,14 +48,13 @@ void setup() {
   pinMode(LED_INDICATOR_PIN, OUTPUT);
   //..............................
   //
-  memory_Setup();
-  //
   bcm_Setup();
+  //
+  mic_Setup();
   //
   beginFDRS();
   //
-  collectMeasurements();
-  publishMeasurements();
+  shouldPublishMeasurements = collectMeasurements();
   //
   digitalWrite(LED_INDICATOR_PIN, OFF);
   //..............................
@@ -62,9 +66,20 @@ void loop() {
   //
   bool was_published = false;
   //
-  if (shouldPublishMeasurements()) {
-    was_published = publishMeasurements();
+  if (shouldPublishMeasurements) {
+    debugPrintln(F("MAIN: Publish measurements"));
+    //
+#ifdef DEBUG
+    digitalWrite(LED_INDICATOR_PIN, ON);
+#endif
+    //
+    was_published = sendFDRS();
+    //
+#ifdef DEBUG
+    digitalWrite(LED_INDICATOR_PIN, OFF);
+#endif
   }
+  //
   collectMeasurements();
   //
   if (was_published) {
@@ -78,57 +93,39 @@ void loop() {
 }
 //OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
 //==================================================================================================
-void collectMeasurements() {
+bool collectMeasurements() {
   //
   bool newMeasurement = false;
-  Measurement* measurement = memory_NewMeasurement();
   //
   // TODO: measure something else and if needed, newMeasurement => if we save useful metric, add VCC info, too
   //
   if (__ShouldMeasureVoltage() || newMeasurement) {
     debugPrintln(F("MAIN: Measure voltage"));
     //
-    measurement->voltage_vcc = bcm_ReadOperatingVoltageMilliV();
-    measurement->voltage_battery = bcm_ReadBatteryVoltageMilliV();
+    measurement.voltage_vcc = bcm_ReadOperatingVoltageMilliV();
+    measurement.voltage_battery = bcm_ReadBatteryVoltageMilliV();
+    //
+    loadFDRS(measurement.voltage_vcc, VOLTAGE_T);
+    loadFDRS(measurement.voltage_battery, VOLTAGE2_T);
+    //
+    newMeasurement = true;
+  }
+  //
+  if (__ShouldMeasureNoise() || newMeasurement) {
+    debugPrintln(F("MAIN: Measure noise"));
+    //
+    measurement.noise_decibel = 0;//int decibelLevel = mic_GetBecibelLevel();
+    //
+    loadFDRS(measurement.noise_decibel, NOISE_T);
     //
     newMeasurement = true;
   }
   //
   if (newMeasurement) {
-    measurement->time_stamp = millis();
-    memory_Save(measurement);
+    measurement.time_stamp = millis();
   }
-}
-//==================================================================================================
-bool shouldPublishMeasurements() {
-  bool response = false;
-  response = response || memory_ShouldFlush();
-  //return response;
-  return true;
-}
-//==================================================================================================
-bool publishMeasurements() {
-  debugPrintln(F("MAIN: Publish measurements"));
   //
-  // TODO: read the data from storage
-  //
-#ifdef DEBUG
-  digitalWrite(LED_INDICATOR_PIN, ON);
-#endif
-  //
-  unsigned int operating_voltage = bcm_ReadOperatingVoltageMilliV();
-  unsigned int battery_voltage = bcm_ReadBatteryVoltageMilliV();
-  //
-  loadFDRS(operating_voltage, VOLTAGE_T);
-  loadFDRS(battery_voltage, VOLTAGE2_T);
-  //
-  bool was_published = sendFDRS();
-  //
-#ifdef DEBUG
-  digitalWrite(LED_INDICATOR_PIN, OFF);
-#endif
-  //
-  return was_published;
+  return newMeasurement;
 }
 //==================================================================================================
 bool __ShouldMeasureVoltage() {
@@ -138,5 +135,9 @@ bool __ShouldMeasureVoltage() {
     lastVoltageMeasurementMillis = millis();
     return true;
   }
+}
+//==================================================================================================
+bool __ShouldMeasureNoise() {
+  return true;
 }
 //==================================================================================================

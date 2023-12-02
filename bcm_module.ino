@@ -3,8 +3,8 @@
 
 #define VCC_SENSOR_PIN A0  // ESP3288
 
-#define R1 217.0   // 100 kilo-ohm
-#define R2 300.0  // 300 kilo-ohm
+#define R1 235.0   // 100 kilo-ohm
+#define R2 150.0  // 300 kilo-ohm
 
 //= INCLUDES =======================================================================================
 
