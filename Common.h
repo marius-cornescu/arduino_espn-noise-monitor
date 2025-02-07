@@ -1,3 +1,4 @@
+#pragma once
 #ifndef _HEADERFILE_COMMON
 #define _HEADERFILE_COMMON
 //= CONSTANTS ======================================================================================
@@ -6,13 +7,15 @@
 //------------------------------------------------
 #define ARRAY_LEN(array) (sizeof(array) / sizeof(array[0]))
 //------------------------------------------------
+#define SEC 1000L      // 1 second
+#define HOUR 3600000L  // 1 hour in milliseconds
+
 #ifdef DEBUG
 #define TIME_TICK 40L
 #else
 #define TIME_TICK 10L
 #endif
 
-#define SEC 100 * TIME_TICK  // 1 second
 //------------------------------------------------
 #ifdef DEBUG
 	#define debugPrint(x) Serial.print(x) //debug on
@@ -22,9 +25,8 @@
 	#define debugPrintln(x) {;} //debug off
 #endif
 //------------------------------------------------
-//= INCLUDES =======================================================================================
 
-//= VARIABLES ======================================================================================
+void (*resetFunc)(void) = 0;  // declare reset fuction at address 0
 
 //------------------------------------------------
 struct Measurement {
@@ -36,4 +38,4 @@ struct Measurement {
 //------------------------------------------------
 
 //==================================================================================================
-#endif // _HEADERFILE_COMMON
+#endif  // _HEADERFILE_COMMON
