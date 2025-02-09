@@ -1,6 +1,6 @@
 //= DEFINES ========================================================================================
 
-#define SOUND_SENSOR_PIN A0  // ESP3288
+#define SOUND_SENSOR_PIN A1  // ESP32
 
 //= INCLUDES =======================================================================================
 #include <Wire.h>
@@ -18,6 +18,7 @@ void mic_Setup() {
   debugPrintln(F("MIC:Setup >>>"));
   //..............................
   pinMode(SOUND_SENSOR_PIN, INPUT);  // Set the sound signal pin as input
+  analogSetPinAttenuation(SOUND_SENSOR_PIN, ADC_11db);
   //..............................
   delay(1 * TIME_TICK);
   debugPrintln(F("MIC:Setup <<<"));
@@ -30,13 +31,13 @@ long mic_GetBecibelLevel() {
   unsigned int peakToPeak = 0;           // peak-to-peak level
 
   unsigned int signalMax = 0;     //minimum value
-  unsigned int signalMin = 1024;  //maximum value
+  unsigned int signalMin = 4095;  //maximum value
 
   // collect data for 50 mS
   while (millis() - startMillis < SAMPLE_WINDOW) {
     sample = analogRead(SOUND_SENSOR_PIN);  //get reading from microphone
 
-    if (sample < 1024) {
+    if (sample < 4095) {
       if (sample > signalMax) {
         signalMax = sample;  // save just the max levels
       } else if (sample < signalMin) {
@@ -45,11 +46,11 @@ long mic_GetBecibelLevel() {
     }
   }
   peakToPeak = signalMax - signalMin;        // max - min = peak-peak amplitude
-  double volts = (peakToPeak * OPERATING_VOLTAGE) / 1.024;  // convert to volts
+  double volts = (peakToPeak * OPERATING_VOLTAGE) / 4.095;  // convert to volts
 
   long db = map(peakToPeak, 1, 1000, 30, 100);  // calibrate for deciBels
 
-#ifdef DEBUG_V
+#ifdef DEBUG_MIC
     Serial.print("MIC:|voltage = [");
     Serial.print(volts);
     Serial.print("]|peakToPeak = [");

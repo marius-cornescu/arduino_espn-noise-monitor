@@ -34,6 +34,7 @@ struct Measurement {
   unsigned int voltage_vcc = 0;
   unsigned int voltage_battery = 0;
   unsigned int noise_decibel = 0;
+  float temperature = 0;
 };
 //------------------------------------------------
 
