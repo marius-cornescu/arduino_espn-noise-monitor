@@ -8,11 +8,8 @@
 //= DEFINES ========================================================================================
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #define DEBUG
-#define DEBUG_MIC
+//#define DEBUG_MIC
 //#define DEBUG_BCM
-
-#define FDRS_DEBUG     // Enable USB-Serial debugging
-#define DBG_LEVEL 2    // 0 for minimal messaging, 1 for troubleshooting, 2 for development
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #define OFF 0x1
@@ -92,13 +89,14 @@ void loop() {
     if (was_published) {
       debugPrintln("Succesfuly published measurements");
     } else {
+      DBG("FAILED");
       //debugPrintln("FAILED to publish measurements");
     }
     //
     digitalWrite(LED_BUILTIN, OFF);
   }
   //
-  sleepFDRS(PERIOD_MEASUREMENT);  // Sleep time in seconds
+  sleepFDRS(PERIOD_MEASUREMENT);
 }
 //OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
 //==================================================================================================
