@@ -1,3 +1,5 @@
+//  FARM DATA RELAY SYSTEM - Sensor Node
+//  "MakerGO ESP32 C3 SuperMini"
 /*
   PIN CONNECTIONS
   -------------------------------
@@ -7,7 +9,7 @@
 */
 //= DEFINES ========================================================================================
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#define DEBUG
+//#define DEBUG
 //#define DEBUG_MIC
 //#define DEBUG_BCM
 
@@ -19,7 +21,7 @@
 #define SOUND_SENSOR_PIN A1
 
 #ifdef DEBUG
-#define PERIOD_MEASUREMENT 1
+#define PERIOD_MEASUREMENT 1 * 10
 #else
 #define PERIOD_MEASUREMENT 1 * 60
 #endif
