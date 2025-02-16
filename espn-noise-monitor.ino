@@ -50,7 +50,7 @@ unsigned long lastNoiseMeasurementDba = 0;
 //==================================================================================================
 //**************************************************************************************************
 void setup() {
-#if defined(DEBUG) || defined(DEBUG_V) || defined(DEBUG_BCM)
+#if defined(DEBUG) || defined(DEBUG_MIC) || defined(DEBUG_BCM)
   // Open serial communications and wait for port to open:
   Serial.begin(115200);
   while (!Serial) { ; }
@@ -112,7 +112,7 @@ bool collectMeasurements() {
   if (__ShouldMeasureNoise() || newMeasurement) {
     debugPrintln(F("MAIN: Measure noise"));
     //
-    measurement.noise_decibel = mic_GetBecibelLevel();
+    measurement.noise_decibel = mic_GetBecibelLevelAverage(3);
     //
     loadFDRS(measurement.noise_decibel, NOISE_T);
     //
