@@ -7,21 +7,19 @@
 #include <Wire.h>
 
 //= CONSTANTS ======================================================================================
-const float OPERATING_VOLTAGE = 3.3;
-const int SAMPLE_WINDOW = 100;  // Sample window width in mS (50 mS = 10Hz)
+const unsigned int SAMPLE_WINDOW = 100;  // Sample window width in mS (50 mS = 10Hz)
+const unsigned int MAX_SAMPLE_COUNT = 100;
 
-const unsigned long ANALOG_RESOLUTION = 4095;
-const unsigned long MIN_ANALOG_VAL = 0;
-const unsigned long MAX_ANALOG_VAL = 4095;
-
-const unsigned long MIN_DB_VAL = 0;
-const unsigned long MAX_DB_VAL = 4095;
+const unsigned int MIN_ANALOG_VAL = 0;
+const unsigned int MAX_ANALOG_VAL = 4096;
 
 //= VARIABLES ======================================================================================
-unsigned int decibelLevel = 0;
+//uint16_t noiseLevel = 0;
 
-unsigned long minLevelDB = MAX_ANALOG_VAL;
-unsigned long maxLevelDB = MIN_ANALOG_VAL;
+#ifdef DEBUG_MIC
+unsigned int minSampleVal = MAX_ANALOG_VAL;
+unsigned int maxSampleVal = MIN_ANALOG_VAL;
+#endif
 
 //##################################################################################################
 //==================================================================================================
@@ -37,84 +35,102 @@ void mic_Setup() {
 }
 //**************************************************************************************************
 //==================================================================================================
-unsigned int mic_GetBecibelLevelAverage(byte sampleSize) {
-  if (sampleSize == 0) {
+int mic_GetNoiseLevelAverage(byte sampleSize) {
+  if (sampleSize <= 0) {
     sampleSize = 1;
-  } else if (sampleSize > 10) {
-    sampleSize = 10;
+  } else if (sampleSize > MAX_SAMPLE_COUNT) {
+    sampleSize = MAX_SAMPLE_COUNT;
   }
 
-  unsigned int db = mic_GetBecibelLevel(sampleSize);
+  int response = MIN_ANALOG_VAL;
+
+  for (byte i = 0; i < sampleSize; i++) {
+    int sample_val = mic_GetNoiseLevel();
+    if (sample_val > response) {
+      response = sample_val;
+    }
+    delay(10L);
+  }
 
 #ifdef DEBUG_MIC
   debugPrint(F("Loudness:"));
-  debugPrint(db);
+  debugPrint(response);
   debugPrintln(F(""));
 #endif
 
-  return db;
+  return response;
 }
 //==================================================================================================
-unsigned int mic_GetBecibelLevel(byte sampleSize) {
-  unsigned long sample = 0;
+int mic_GetNoiseLevel() {
+  unsigned long startMillis = millis();     // Start of sample window
 
-  unsigned long startMillis = millis();      // Start of sample window
-  unsigned long peakToPeak = 0;              // peak-to-peak level
-  unsigned long signalMin = MAX_ANALOG_VAL;  //maximum value
-  unsigned long signalMax = MIN_ANALOG_VAL;  //minimum value
+  unsigned int sample = 0;
+  unsigned int signalMin = MAX_ANALOG_VAL;  //maximum value
+  unsigned int signalMax = MIN_ANALOG_VAL;  //minimum value
 
-  // collect data for 50 mS
-  while (millis() - startMillis < SAMPLE_WINDOW * sampleSize) {
+  int peakToPeak = 0;              // peak-to-peak level
+
+  // collect data for the sample window
+  while (millis() - startMillis < SAMPLE_WINDOW) {
     sample = analogRead(SOUND_SENSOR_PIN);  //get reading from microphone
-
-    __recordMinMax_IfValuesChanged(sample);
+    //__recordMinMax_IfValuesChanged(sample);
+    //debugPrintln(sample);
 
     if (sample < MAX_ANALOG_VAL) {
       if (sample > signalMax) {
-        signalMax = sample;  // save just the max levels
-      } else if (sample < signalMin) {
-        signalMin = sample;  // save just the min levels
+        signalMax = sample;  // save the max levels
+      }
+      if (sample < signalMin) {
+        signalMin = sample;  // save the min levels
       }
     }
   }
   peakToPeak = signalMax - signalMin;  // max - min = peak-peak amplitude
 
-  unsigned int db = map(peakToPeak, MIN_ANALOG_VAL, MAX_ANALOG_VAL, 30, 100);  // calibrate for deciBels
+  //noiseLevel = map(peakToPeak, MIN_ANALOG_VAL, MAX_ANALOG_VAL, 30, 100);  // calibrate for Noises
+  int response = peakToPeak;
+
+  //Serial.println(peakToPeak);
 
 #ifdef DEBUG_MIC
-  debugPrint(F("peakToPeak:"));
-  debugPrint(peakToPeak);
+  debugPrint(F("signalMin:"));
+  debugPrint(signalMin);
   debugPrint(F(","));
+  debugPrint(F("signalMax:"));
+  debugPrint(signalMax);
+  debugPrint(F(","));
+  // debugPrint(F("peakToPeak:"));
+  // debugPrint(peakToPeak);
+  // debugPrint(F(","));
   debugPrint(F("Loudness:"));
-  debugPrint(db);
-  debugPrintln(F(""));
+  debugPrint(response);
+  debugPrintln(F("dBA"));
 #endif
 
-  decibelLevel = db;
-  return db;
+  return response;
 }
 //==================================================================================================
-void __recordMinMax_IfValuesChanged(unsigned long sample) {
+void __recordMinMax_IfValuesChanged(unsigned int sample) {
+#ifdef DEBUG_MIC
   bool shouldPrintData = false;
   //
-  if (sample < minLevelDB) {
-    minLevelDB = sample;
+  if (sample < minSampleVal) {
+    minSampleVal = sample;
     shouldPrintData = true;
   }
   //
-  if (sample > maxLevelDB) {
-    maxLevelDB = sample;
+  if (sample > maxSampleVal) {
+    maxSampleVal = sample;
     shouldPrintData = true;
   }
   //
   if (shouldPrintData) {
-#ifdef DEBUG_MIC
-    debugPrint(F("MIC:|minLevelDB["));
-    debugPrint(minLevelDB);
-    debugPrint(F("]|maxLevelDB["));
-    debugPrint(maxLevelDB);
+    debugPrint(F("MIC:|minSampleVal["));
+    debugPrint(minSampleVal);
+    debugPrint(F("]|maxSampleVal["));
+    debugPrint(maxSampleVal);
     debugPrintln(F("]"));
-#endif
   }
+#endif
 }
 //==================================================================================================

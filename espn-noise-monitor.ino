@@ -20,11 +20,8 @@
 #define VCC_SENSOR_PIN A0
 #define SOUND_SENSOR_PIN A1
 
-#ifdef DEBUG
-#define PERIOD_MEASUREMENT 1 * 10
-#else
-#define PERIOD_MEASUREMENT 1 * 60
-#endif
+// How often to read metrics (how long to sleep)
+#define PERIOD_MEASUREMENT 1 * 30
 
 #define PERIOD_READ_VOLTAGE 1 * 60
 //#define PERIOD_READ_VOLTAGE 5 * 60  // 5 minutes
@@ -41,7 +38,7 @@
 //= VARIABLES ======================================================================================
 temperature_sensor_handle_t temp_handle = NULL;
 
-Measurement measurement = { 0, 0, 0, 0, 0 };
+Measurement measurement = { 0, 0, 0, 0, 0.0 };
 
 unsigned long lastVoltageMeasurementMillis = 0;
 unsigned long lastNoiseMeasurementDba = 0;
@@ -50,12 +47,12 @@ unsigned long lastNoiseMeasurementDba = 0;
 //==================================================================================================
 //**************************************************************************************************
 void setup() {
-#if defined(DEBUG) || defined(DEBUG_MIC) || defined(DEBUG_BCM)
-  // Open serial communications and wait for port to open:
-  Serial.begin(115200);
-  while (!Serial) { ; }
-  delay(5 * SEC);
-#endif
+// #if defined(DEBUG) || defined(DEBUG_MIC) || defined(DEBUG_BCM)
+//   // Open serial communications and wait for port to open:
+//   Serial.begin(115200);
+//   while (!Serial) { ; }
+//   delay(5 * SEC);
+// #endif
   debugPrintln(F("START-UP >>>>>>>>>>>>>>>"));
   //..............................
   pinMode(LED_BUILTIN, OUTPUT);
@@ -98,7 +95,7 @@ void loop() {
     digitalWrite(LED_BUILTIN, OFF);
   }
   //
-  sleepFDRS(PERIOD_MEASUREMENT);
+  //sleepFDRS(PERIOD_MEASUREMENT);
 }
 //OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
 //==================================================================================================
@@ -112,9 +109,9 @@ bool collectMeasurements() {
   if (__ShouldMeasureNoise() || newMeasurement) {
     debugPrintln(F("MAIN: Measure noise"));
     //
-    measurement.noise_decibel = mic_GetBecibelLevelAverage(3);
+    measurement.noise_db = mic_GetNoiseLevelAverage(100);
     //
-    loadFDRS(measurement.noise_decibel, NOISE_T);
+    loadFDRS(measurement.noise_db, NOISE_T);
     //
     newMeasurement = true;
   }
